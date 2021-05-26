@@ -1,0 +1,26 @@
+<form action="/upload" method="post" enctype="multipart/form-data">
+   <div>
+    <label>Ten bai hat: </label>
+    <input type="text" name="songTitle"/>
+   </div>
+<div>
+    <label>Ten tac gia: </label>
+    <input type="text" name="artistName"/>
+</div>
+<div>
+   <label>Ten album: </label>
+   <input type="text" name="albumTitle"/>
+</div>
+<div>
+   <label>Nam phat hanh: </label>
+   <input type="text" name="year"/>
+</div>
+<div>
+   <label>The loai nhac: </label>
+   <input type="text" name="genreName"/>
+</div>
+ <div>
+    <input type="file" id="myFile" name="upload" multiple="multiple" >
+ </div>
+    <input type="submit" value="Upload">
+  </form>
