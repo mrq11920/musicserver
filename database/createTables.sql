@@ -49,9 +49,6 @@ create user 'musicserver'@'localhost'  identified with mysql_native_password by 
 GRANT ALL PRIVILEGES ON *.* TO 'musicserver'@'localhost' IDENTIFIED BY '12345';
 create database musicdb;
 
-ALTER TABLE SongFile  
-ADD FULLTEXT(songTitle,artistName,albumTitle);
-
 CREATE  INDEX autid ON newauthor(aut_id);
 
 alter table SongFile create index songTitleindex on SongFile(songTitle);
@@ -61,10 +58,7 @@ CREATE TABLE Genre (
             genreName varchar(72) PRIMARY KEY,
             description varchar(255)
     );
- CREATE TABLE Playlist (
-            playlistName varchar(72) PRIMARY KEY,
-            tracks int
-    );
+
 CREATE TABLE Artist (
             artistName varchar(72) PRIMARY KEY,
             genreName varchar(72)
@@ -88,4 +82,19 @@ CREATE TABLE Artist (
             genreName varchar(72),
             playlistName varchar(72),
             PRIMARY KEY (songId)
+    );
+
+    create table User (
+            userName varchar(100),
+            password varchar(100),
+            email varchar(100),
+            country varchar(10),
+            age int,
+            userId varchar(100)
+    );
+    create table Playlist (
+            playlistName varchar(200),
+            songIdList varchar(2000),
+            owner varchar(100),
+            playlistId varchar(100)
     );
