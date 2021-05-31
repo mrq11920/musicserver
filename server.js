@@ -49,6 +49,55 @@ http.createServer(function (req, res) {
         });
 
     }
+    else if (req.url.includes('/handle-user/') & req.method.toLowerCase() == 'post') {
+        let data = '';
+        req.on('data', chunk => {
+            data += chunk;
+        })
+        req.on('end', () => {
+            console.log('/login post data json -----------> ');
+            console.log(JSON.parse(data));
+            var json = JSON.parse(data);
+            var userName = json.userName;
+            var password = json.password;
+            var email = json.email;
+            var age = json.age;
+            var userId = '';
+            switch (json.type) {
+                case 'login':
+                    con.query('select userId from User where userName = ? AND password = ?', [userName,password], function (err, result) {
+                        if (err) console.log(err);
+                        if (result.length != 0) {
+                            res.end(JSON.stringify({ status: 'success', message: 'login successfully', userId: result[0].userId}));
+                        }
+                        else 
+                            res.end(JSON.stringify({ status: 'failed', message: 'login failed!' }));
+
+                    });
+                    break;
+                case 'signup':
+                    userId = sha1(userName + password + email + age);
+                    con.query('select userId from User where userName = ?', [userName], function (err, result) {
+                        if (err) console.log(err);
+                        if (result.length == 0) {
+                            con.query('insert into User(userName,password,email,age,userId) values(?,?,?,?,?)', [userName, password, email, age, userId], function (err, result) {
+                            console.log('add new user to database userId--> ' + userId);
+                            });
+                            res.end(JSON.stringify({ status: 'success', message: 'sign up successfully', userId: userId }));
+                        }
+                        else {
+                            res.end(JSON.stringify({ status: 'failed', message: 'username existed !' }));
+                        }
+
+                    });
+                    break;
+                case 'getUserId':
+                    break;
+
+            }
+            console.log('end-----------------------------------------');
+        });
+    }
     else if (req.url.includes('/upload') && req.method.toLowerCase() == 'post') {
         var form = new formidable.IncomingForm();
         form.parse(req, function (err, fields, files) {
@@ -97,25 +146,25 @@ http.createServer(function (req, res) {
                     console.log('error in saving file --> ' + err.message);
                 }
             });
-
         });
     }
-    else if (req.url.includes('/search-music') && req.method.toLowerCase() == 'post') {
+    else if (req.url.includes('/search-music/') && req.method.toLowerCase() == 'post') {
         let data = '';
         req.on('data', chunk => {
             data += chunk;
         })
         req.on('end', () => {
+            console.log('/search-music post data json -------->');
             console.log(JSON.parse(data));
             var json = JSON.parse(data);
-            switch (json.action.toLowerCase()) {
+            switch (json.type.toLowerCase()) {
                 case "song":
                     console.log('query result from /search-music--------------------');
                     var songName = json.data;
                     console.log('songName --> ' + songName);
-                    con.query('select * from SongFile where songTitle like ?', ['%' +songName +'%'], function (err, result) {
+                    con.query('select * from SongFile where songTitle like ?', ['%' + songName + '%'], function (err, result) {
                         if (err) throw err;
-                        console.log('action: song --> ');
+                        console.log('type: song --> ');
                         console.log(result);
                         console.log('length --> ' + result.length);
                         console.log('---------------------------------------------------')
@@ -124,9 +173,9 @@ http.createServer(function (req, res) {
                     break;
                 case "artist":
                     var artistName = json.data;
-                    con.query('select * from SongFile where artistName like ?', ['%' +artistName+'%'], function (err, result) {
+                    con.query('select * from SongFile where artistName like ?', ['%' + artistName + '%'], function (err, result) {
                         if (err) throw err;
-                        console.log('query result from /search-music| action: artist --> ');
+                        console.log('query result from /search-music| type: artist --> ');
                         console.log(result);
                         console.log('length --> ' + result.length);
                         console.log('---------------------------------------------------')
@@ -135,9 +184,9 @@ http.createServer(function (req, res) {
                     break;
                 case "album":
                     var albumTitle = json.data;
-                    con.query('select * from SongFile where albumTitle = ?', ['%' +albumTitle +'%'], function (err, result) {
+                    con.query('select * from SongFile where albumTitle = ?', ['%' + albumTitle + '%'], function (err, result) {
                         if (err) throw err;
-                        console.log('query result from /search-music| action: album --> ');
+                        console.log('query result from /search-music| type: album --> ');
                         console.log(result);
                         console.log('length --> ' + result.length);
                         console.log('---------------------------------------------------')
@@ -145,45 +194,61 @@ http.createServer(function (req, res) {
                     });
                     break;
                 default:
-                    console.log('error in /search music | action not found!');
+                    console.log('error in /search music | type not found!');
             }
         })
+    }
+    else  if (req.url.includes('/handle-user-playlist/')&& req.method.toLowerCase() == 'post') {
+        //"{"action":"add/update/delete", "data":"..","userid":"ab34"}
+        //"playlist:{"playlist_id":"","owner":"userid","song_list":["songId","songId2"]}"
+        //"song: {"name":"kho ve nu cuoi","singers":["dat g","du uyen"],"year":2019,""}
+
+        let data = '';
+        req.on('data', chunk => {
+            data += chunk;
+        })
+        req.on('end', () => {
+            console.log('/handle-user-playlist post data json -------->');
+            console.log(JSON.parse(data));
+            var json = JSON.parse(data);
+            var playlistName = json.playlistName;
+            var owner = json.owner;
+            var songIdListString = JSON.stringify(json.songIdList);
+            console.log('songIdListString --> ' + songIdListString);
+            switch (json.type) {
+                case "get":
+
+                    break;
+                case "add":
+                    console.log('/handle-user-playlist |type --> add');
+                    var playlistId = sha1(playlistName+owner + Date.now());
+                    con.query('insert into Playlist(playlistName,owner,songIdList,playlistId) values(?,?,?,?)',[playlistName,owner,songIdListString,playlistId],function(err,result){
+                        if(err)
+                        {
+                            console.log(err);
+                            res.end(JSON.stringify({status:'fail',message:'error in add new playlist'}));
+                        }
+                        else {
+                            console.log('insert new playlist to database  playlistId ---> ' +playlistId);
+                            res.end(JSON.stringify({status:'success',message:'added new playlist to database, playlistId --> ' + playlistId}));
+                        }
+                    });
+                    break;
+                case "update":
+
+                    break;
+                case "delete":
+                    break;
+                default:
+                    console.log('error in /handle user playlist');
+            }
+        });
     }
     else {
         // to do: search song by name or author (fulltext)
         // + get song by id / name 
-        if (req.url.includes('/handle-user-playlist')) {
-            //"{"action":"add/update/delete", "data":"..","userid":"ab34"}
-            //"playlist:{"playlist_id":"","owner":"userid","song_list":["songId","songId2"]}"
-            //"song: {"name":"kho ve nu cuoi","singers":["dat g","du uyen"],"year":2019,""}
-
-            let data = '';
-            req.on('data', chunk => {
-                data += chunk;
-            })
-            req.on('end', () => {
-                console.log(JSON.parse(data).todo);
-                var json = JSON.parse(data);
-                switch (json.action) {
-                    case "add":
-                        break;
-                    case "update":
-                        break;
-                    case "delete":
-                        break;
-                    default:
-                        console.log('error in /handle user playlist');
-
-
-                }
-                res.end();
-            })
-        }
-
-        else {
             res.writeHead(404);
             res.end('resource node found!');
-        }
     }
 
 }).listen(8080, host, () => {
