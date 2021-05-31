@@ -6,7 +6,8 @@
   "dependencies": {
     "formidable": "^1.2.2",
     "mysql": "^2.18.1",
-    "node-static": "^0.7.11"
+    "node-static": "^0.7.11",
+    "sha1": "^1.1.1"
   },
   "devDependencies": {},
   "scripts": {
