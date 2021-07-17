@@ -12,6 +12,7 @@ const baseUrl = 'http://localhost:8080/'
 //create user 'musicserver'@'localhost'  identified with mysql_native_password by '12345';
 
 var mysql = require('mysql');
+const { JSONParser } = require('formidable');
 
 var con = mysql.createConnection({
     host: "127.0.0.1",
@@ -25,6 +26,18 @@ con.connect(function (err) {
     console.log("Connected!");
 });
 
+function randomIntFromInterval(min, max) { // min and max included 
+    return Math.floor(Math.random() * (max - min + 1) + min)
+}
+
+function sleep(milliseconds) {
+    var start = new Date().getTime();
+    for (var i = 0; i < 1e7; i++) {
+        if ((new Date().getTime() - start) > milliseconds) {
+            break;
+        }
+    }
+}
 
 var file = new (static.Server)(__dirname);
 http.createServer(function (req, res) {
@@ -49,18 +62,17 @@ http.createServer(function (req, res) {
         });
 
     }
-    else if(req.url.includes('/get-all-music') && req.method.toLowerCase() == 'get')
-    {
+    else if (req.url.includes('/get-all-music') && req.method.toLowerCase() == 'get') {
         console.log('/get-all-music---------------------------');
-        con.query('select * from Song',function(err, result){
-            if(err) console.log(err);
+        con.query('select * from Song', function (err, result) {
+            if (err) console.log(err);
             res.end(JSON.stringify(result));
         });
     }
-    else if(req.url.includes('/get-top-ten-music') && req.method.toLowerCase() == 'get'){
+    else if (req.url.includes('/get-top-ten-music') && req.method.toLowerCase() == 'get') {
         console.log('/get-top-ten-music---------------------------');
-        con.query('select * from Song order by songId limit 5',function(err, result){
-            if(err) console.log(err);
+        con.query('select * from Song order by songId limit 5', function (err, result) {
+            if (err) console.log(err);
             res.end(JSON.stringify(result));
         });
     }
@@ -80,12 +92,12 @@ http.createServer(function (req, res) {
             var userId = '';
             switch (json.type) {
                 case 'login':
-                    con.query('select userId from User where userName = ? AND password = ?', [userName,password], function (err, result) {
+                    con.query('select userId from User where userName = ? AND password = ?', [userName, password], function (err, result) {
                         if (err) console.log(err);
                         if (result.length != 0) {
-                            res.end(JSON.stringify({ status: 'success', message: 'login successfully', userId: result[0].userId}));
+                            res.end(JSON.stringify({ status: 'success', message: 'login successfully', userId: result[0].userId }));
                         }
-                        else 
+                        else
                             res.end(JSON.stringify({ status: 'failed', message: 'login failed!' }));
                     });
                     break;
@@ -95,7 +107,7 @@ http.createServer(function (req, res) {
                         if (err) console.log(err);
                         if (result.length == 0) {
                             con.query('insert into User(userName,password,email,age,userId) values(?,?,?,?,?)', [userName, password, email, age, userId], function (err, result) {
-                            console.log('add new user to database userId--> ' + userId);
+                                console.log('add new user to database userId--> ' + userId);
                             });
                             res.end(JSON.stringify({ status: 'success', message: 'sign up successfully', userId: userId }));
                         }
@@ -158,7 +170,7 @@ http.createServer(function (req, res) {
             con.query('select songId from Song where songId = ?', [songId], function (err, result) {
                 if (err) console.log(err);
                 if (result.length == 0) {
-                    con.query('insert into Song(songTitle,artistName,albumTitle,genreName,songId,songUrl,songImageUrl) values (?,?,?,?,?,?,?)', [songTitle, artistName, albumTitle, genreName, songId, baseUrl + 'music/' + songId + '.mp3',baseUrl+'music/'+songId +'.jpg'], function (err, result) {
+                    con.query('insert into Song(songTitle,artistName,albumTitle,genreName,songId,songUrl,songImageUrl) values (?,?,?,?,?,?,?)', [songTitle, artistName, albumTitle, genreName, songId, baseUrl + 'music/' + songId + '.mp3', baseUrl + 'music/' + songId + '.jpg'], function (err, result) {
                         if (err) throw err;
                         console.log("1 record inserted");
                     });
@@ -169,7 +181,7 @@ http.createServer(function (req, res) {
             // console.log(files.songData);
             // console.log('-------------------');
             // move uploaded file from /tmp to musicFolder 
-         
+
         });
     }
     else if (req.url.includes('/search-music/') && req.method.toLowerCase() == 'post') {
@@ -208,7 +220,7 @@ http.createServer(function (req, res) {
                     break;
                 case "album":
                     var albumTitle = json.data;
-                    con.query('select * from Song where albumTitle = ?', [albumTitle + '%'], function (err, result) {
+                    con.query('select * from Song where albumTitle like ?', [albumTitle + '%'], function (err, result) {
                         if (err) throw err;
                         console.log('query result from /search-music| type: album --> ');
                         console.log(result);
@@ -217,12 +229,78 @@ http.createServer(function (req, res) {
                         res.end(JSON.stringify(result));
                     });
                     break;
+                case "playlist":
+                    var playlistName = json.data;
+                    var arrayFinalResult = [];
+                    var lock = 1;
+                    con.query('select * from Playlist where playlistName like ?', [playlistName + '%'], function (err, result) {
+                        if (err) throw err;
+                        console.log('query result from /search-music| type: playlistName --> ');
+                        console.log(result);
+                        console.log('length --> ' + result.length);
+                        console.log('---------------------------------------------------')
+                        // if(result.length == 0) res.end();
+                        var resultLength = result.length;
+                        for (var i = 0; i < result.length; i++) {
+
+                            var listSongId = result[i].songIdList.split(',');
+                            var resultPlaylistName = result[i].playlistName;
+
+                            console.log('list song id -->  ');
+                            console.log(listSongId);
+                            // lock = 1;
+                            con.query('select * from Song where songId in (?)', [listSongId], function (err, result_songs) {
+                                if (err) console.log(err);
+                                console.log('result_songs --->  ');
+                                console.log(result_songs);
+                                console.log('resultPlaylistName ---> ' + resultPlaylistName);
+                                var jsonTemp = { 'playlistName': resultPlaylistName, 'songs': result_songs };
+                                console.log('jsonTemp --> ');
+                                console.log(jsonTemp);
+                                arrayFinalResult.push(jsonTemp);
+
+                                console.log(' value i ----> ' + i);
+                                // lock = 0;
+                                console.log('lock value --> ' + lock)
+                                if(i == resultLength - 1 ) 
+                                    lock = 0;
+                                //     res.end(JSON.stringify(arrayFinalResult));
+
+                                // res.end(JSON.stringify(songs));
+                            });
+                         
+                        }
+                        // console.log('lock value --> ' + lock)
+                        // res.end(JSON.stringify(arrayFinalResult));
+                    });
+                    break;
                 default:
                     console.log('error in /search music | type not found!');
             }
         })
     }
-    else  if (req.url.includes('/handle-user-playlist/')&& req.method.toLowerCase() == 'post') {
+    else if (req.url.includes('/generate-playlist') && req.method.toLocaleLowerCase() == 'get') {
+
+        var playlistNames = ['Nhac Hay Thang 3', 'Nhac Tam Trang', 'Nhac Hay Thang 4', 'Nhac Buon', 'Dance', 'Pop'];
+        con.query('select * from Song', function (err, result) {
+            if (err) console.log(err);
+            var allMusic = result;
+            console.log(allMusic[1].songId);
+            var owner = "admin";
+            for (var i = 0; i < playlistNames.length; i++) {
+                var playlistLength = randomIntFromInterval(2, 5);
+                var songIdListString = [];
+                for (var j = 0; j < playlistLength; j++) {
+                    var songId = allMusic[randomIntFromInterval(0, allMusic.length - 1)].songId;
+                    console.log('-------- songID ' + songId);
+                    songIdListString.push(songId);
+                }
+                con.query('insert into Playlist(playlistName,owner,songIdList,playlistId) values(?,?,?,?)', [playlistNames[i], owner, songIdListString.join(), sha1(playlistNames[i])], function (err, result) { });
+            }
+            res.end(JSON.stringify(allMusic));
+        });
+    }
+    else if (req.url.includes('/handle-user-playlist/') && req.method.toLowerCase() == 'post') {
         //"{"action":"add/update/delete", "data":"..","userid":"ab34"}
         //"playlist:{"playlist_id":"","owner":"userid","song_list":["songId","songId2"]}"
         //"song: {"name":"kho ve nu cuoi","singers":["dat g","du uyen"],"year":2019,""}
@@ -245,16 +323,15 @@ http.createServer(function (req, res) {
                     break;
                 case "add":
                     console.log('/handle-user-playlist |type --> add');
-                    var playlistId = sha1(playlistName+owner + Date.now());
-                    con.query('insert into Playlist(playlistName,owner,songIdList,playlistId) values(?,?,?,?)',[playlistName,owner,songIdListString,playlistId],function(err,result){
-                        if(err)
-                        {
+                    var playlistId = sha1(playlistName + owner + Date.now());
+                    con.query('insert into Playlist(playlistName,owner,songIdList,playlistId) values(?,?,?,?)', [playlistName, owner, songIdListString, playlistId], function (err, result) {
+                        if (err) {
                             console.log(err);
-                            res.end(JSON.stringify({status:'fail',message:'error in add new playlist'}));
+                            res.end(JSON.stringify({ status: 'fail', message: 'error in add new playlist' }));
                         }
                         else {
-                            console.log('insert new playlist to database  playlistId ---> ' +playlistId);
-                            res.end(JSON.stringify({status:'success',message:'added new playlist to database, playlistId --> ' + playlistId}));
+                            console.log('insert new playlist to database  playlistId ---> ' + playlistId);
+                            res.end(JSON.stringify({ status: 'success', message: 'added new playlist to database, playlistId --> ' + playlistId }));
                         }
                     });
                     break;
@@ -271,8 +348,8 @@ http.createServer(function (req, res) {
     else {
         // to do: search song by name or author (fulltext)
         // + get song by id / name 
-            res.writeHead(404);
-            res.end('resource node found!');
+        res.writeHead(404);
+        res.end('resource node found!');
     }
 
 }).listen(8080, () => {

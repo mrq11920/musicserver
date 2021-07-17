@@ -46,8 +46,9 @@ alter table Song create index songTitleindex on SongFile(songTitle);
 
 use musicdb; drop table if exists SongFile; drop table if exists Album; drop table if exists Artist;drop table if exists Genre; drop table if exists Playlist;   
 
-create user 'musicserver'@'localhost'  identified with mysql_native_password by '12345'
-GRANT ALL PRIVILEGES ON *.* TO 'musicserver'@'localhost' IDENTIFIED BY '12345';
+create user 'musicserver'@'localhost'  identified with mysql_native_password by '12345';
+GRANT ALL PRIVILEGES ON musicdb.* TO 'musicserver'@'localhost';
+ALTER USER 'musicserver'@'localhost' IDENTIFIED WITH mysql_native_password BY '12345';
 create database musicdb;
 
 use musicdb;
