@@ -49,6 +49,14 @@ http.createServer(function (req, res) {
         });
 
     }
+    else if(req.url.includes('/get-all-music') && req.method.toLowerCase() == 'get')
+    {
+        console.log('/get-all-music---------------------------');
+        con.query('select * from Song',function(err, result){
+            if(err) console.log(err);
+            res.end(JSON.stringify(result));
+        });
+    }
     else if(req.url.includes('/get-top-ten-music') && req.method.toLowerCase() == 'get'){
         console.log('/get-top-ten-music---------------------------');
         con.query('select * from Song order by songId limit 5',function(err, result){
@@ -79,7 +87,6 @@ http.createServer(function (req, res) {
                         }
                         else 
                             res.end(JSON.stringify({ status: 'failed', message: 'login failed!' }));
-
                     });
                     break;
                 case 'signup':
@@ -268,7 +275,7 @@ http.createServer(function (req, res) {
             res.end('resource node found!');
     }
 
-}).listen(8080, host, () => {
+}).listen(8080, () => {
     console.log("serve file at folder --> " + __dirname);
     console.log('server started!');
 });
