@@ -49,6 +49,13 @@ http.createServer(function (req, res) {
         });
 
     }
+    else if(req.url.includes('/get-top-ten-music') && req.method.toLowerCase() == 'get'){
+        console.log('/get-top-ten-music---------------------------');
+        con.query('select * from Song order by songId limit 5',function(err, result){
+            if(err) console.log(err);
+            res.end(JSON.stringify(result));
+        });
+    }
     else if (req.url.includes('/handle-user/') & req.method.toLowerCase() == 'post') {
         let data = '';
         req.on('data', chunk => {
@@ -116,6 +123,7 @@ http.createServer(function (req, res) {
             var genreName = fields.genreName;
             var year = fields.year;
             var songId = sha1(songTitle + artistName + genreName + albumTitle + year);
+            // var songImage = 
 
             con.query('select artistName from Artist where artistName = ?', [artistName], function (err, result) {
                 if (err) console.log(err);
@@ -129,23 +137,32 @@ http.createServer(function (req, res) {
                     con.query('insert into Album(albumTitle,artistName,genreName,year) values(?,?,?,?)', [albumTitle, artistName, genreName, year]);
             });
 
-            con.query('select songId from SongFile where songId = ?', [songId], function (err, result) {
+            fs.rename(files.songData.path, musicFolder + songId + '.mp3', function (err) {
+                if (err) {
+                    console.log('error in saving file --> ' + err.message);
+                }
+            });
+            fs.rename(files.songImage.path, musicFolder + songId + '.jpg', function (err) {
+                if (err) {
+                    console.log('error in saving file --> ' + err.message);
+                }
+            });
+
+            con.query('select songId from Song where songId = ?', [songId], function (err, result) {
                 if (err) console.log(err);
                 if (result.length == 0) {
-
-                    con.query('insert into SongFile(songTitle,artistName,albumTitle,genreName,songId,location) values (?,?,?,?,?,?)', [songTitle, artistName, albumTitle, genreName, songId, baseUrl + '/music/' + songId + '.mp3'], function (err, result) {
+                    con.query('insert into Song(songTitle,artistName,albumTitle,genreName,songId,songUrl,songImageUrl) values (?,?,?,?,?,?,?)', [songTitle, artistName, albumTitle, genreName, songId, baseUrl + 'music/' + songId + '.mp3',baseUrl+'music/'+songId +'.jpg'], function (err, result) {
                         if (err) throw err;
                         console.log("1 record inserted");
                     });
                 }
             });
-
+            // console.log(files);
+            // console.log('--------------------');
+            // console.log(files.songData);
+            // console.log('-------------------');
             // move uploaded file from /tmp to musicFolder 
-            fs.rename(files.upload.path, musicFolder + songId + '.mp3', function (err) {
-                if (err) {
-                    console.log('error in saving file --> ' + err.message);
-                }
-            });
+         
         });
     }
     else if (req.url.includes('/search-music/') && req.method.toLowerCase() == 'post') {
@@ -160,9 +177,9 @@ http.createServer(function (req, res) {
             switch (json.type.toLowerCase()) {
                 case "song":
                     console.log('query result from /search-music--------------------');
-                    var songName = json.data;
+                    var songName = json.data.trim();
                     console.log('songName --> ' + songName);
-                    con.query('select * from SongFile where songTitle like ?', ['%' + songName + '%'], function (err, result) {
+                    con.query('select * from Song where songTitle like ?', [songName + '%'], function (err, result) {
                         if (err) throw err;
                         console.log('type: song --> ');
                         console.log(result);
@@ -172,25 +189,25 @@ http.createServer(function (req, res) {
                     });
                     break;
                 case "artist":
-                    var artistName = json.data;
-                    con.query('select * from SongFile where artistName like ?', ['%' + artistName + '%'], function (err, result) {
+                    var artistName = json.data.trim();
+                    con.query('select * from Song where artistName like ?', [artistName + '%'], function (err, result) {
                         if (err) throw err;
                         console.log('query result from /search-music| type: artist --> ');
                         console.log(result);
                         console.log('length --> ' + result.length);
                         console.log('---------------------------------------------------')
-                        res.end(result);
+                        res.end(JSON.stringify(result));
                     });
                     break;
                 case "album":
                     var albumTitle = json.data;
-                    con.query('select * from SongFile where albumTitle = ?', ['%' + albumTitle + '%'], function (err, result) {
+                    con.query('select * from Song where albumTitle = ?', [albumTitle + '%'], function (err, result) {
                         if (err) throw err;
                         console.log('query result from /search-music| type: album --> ');
                         console.log(result);
                         console.log('length --> ' + result.length);
                         console.log('---------------------------------------------------')
-                        res.end(result);
+                        res.end(JSON.stringify(result));
                     });
                     break;
                 default:

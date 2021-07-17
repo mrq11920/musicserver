@@ -41,19 +41,16 @@ CREATE TABLE Artist (
     );
    
 
+CREATE  INDEX autid ON newauthor(aut_id);
+alter table Song create index songTitleindex on SongFile(songTitle);
 
-drop table if exists SongFile; drop table if exists Album; drop table if exists Artist;drop table if exists Genre; drop table if exists Playlist;   
-
+use musicdb; drop table if exists SongFile; drop table if exists Album; drop table if exists Artist;drop table if exists Genre; drop table if exists Playlist;   
 
 create user 'musicserver'@'localhost'  identified with mysql_native_password by '12345'
 GRANT ALL PRIVILEGES ON *.* TO 'musicserver'@'localhost' IDENTIFIED BY '12345';
 create database musicdb;
 
-CREATE  INDEX autid ON newauthor(aut_id);
-
-alter table SongFile create index songTitleindex on SongFile(songTitle);
-
-
+use musicdb;
 CREATE TABLE Genre (
             genreName varchar(72) PRIMARY KEY,
             description varchar(255)
@@ -71,14 +68,15 @@ CREATE TABLE Artist (
             year int
     );
 
-    CREATE TABLE SongFile (
+    CREATE TABLE Song (
 	    songId varchar(100),
             songTitle varchar(72),
             artistName varchar(72),
             albumTitle varchar(72),
             trackNo int,
             format varchar(6),
-            location varchar(255),
+            songUrl varchar(255),
+            songImageUrl varchar(255),
             genreName varchar(72),
             playlistName varchar(72),
             PRIMARY KEY (songId)
