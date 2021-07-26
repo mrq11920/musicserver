@@ -85,6 +85,7 @@ http.createServer(function (req, res) {
                         if (err) throw err;
                         console.log("1 record inserted");
                     });
+
                     // try
                     // {
                     //     con.query('insert into Artist values(?,?)', [artistName, genreName]);
@@ -306,47 +307,30 @@ http.createServer(function (req, res) {
                     break;
                 case "playlist":
                     var playlistName = json.data;
-                    var arrayFinalResult = [];
-                    var lock = 1;
                     con.query('select * from Playlist where playlistName like ?', [playlistName + '%'], function (err, result) {
                         if (err) throw err;
                         console.log('query result from /search-music| type: playlistName --> ');
                         console.log(result);
                         console.log('length --> ' + result.length);
                         console.log('---------------------------------------------------')
-                        // if(result.length == 0) res.end();
-                        var resultLength = result.length;
-                        for (var i = 0; i < result.length; i++) {
-
-                            var listSongId = result[i].songIdList.split(',');
-                            var resultPlaylistName = result[i].playlistName;
+                        if(result.length != 0) 
+                        {
+                            var listSongId = result[0].songIdList.split(',');
+                            var resultPlaylistName = result[0].playlistName;
 
                             console.log('list song id -->  ');
                             console.log(listSongId);
-                            // lock = 1;
                             con.query('select * from Song where songId in (?)', [listSongId], function (err, result_songs) {
                                 if (err) console.log(err);
                                 console.log('result_songs --->  ');
                                 console.log(result_songs);
                                 console.log('resultPlaylistName ---> ' + resultPlaylistName);
-                                var jsonTemp = { 'playlistName': resultPlaylistName, 'songs': result_songs };
-                                console.log('jsonTemp --> ');
-                                console.log(jsonTemp);
-                                arrayFinalResult.push(jsonTemp);
-
-                                console.log(' value i ----> ' + i);
-                                // lock = 0;
-                                console.log('lock value --> ' + lock)
-                                if (i == resultLength - 1)
-                                    lock = 0;
-                                //     res.end(JSON.stringify(arrayFinalResult));
-
-                                // res.end(JSON.stringify(songs));
+                                var resultPlaylist = { 'playlistName': resultPlaylistName, 'songs': result_songs };
+                                // console.log('jsonTemp --> ');
+                                // console.log(resultPlaylist);
+                                res.end(JSON.stringify(resultPlaylist));
                             });
-
                         }
-                        // console.log('lock value --> ' + lock)
-                        // res.end(JSON.stringify(arrayFinalResult));
                     });
                     break;
                 default:
