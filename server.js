@@ -1,4 +1,3 @@
-const host = 'localhost';
 var formidable = require('formidable'),
     util = require('util')
     , fs = require('fs'),
@@ -13,6 +12,7 @@ const baseUrl = 'http://localhost:8080/'
 
 var mysql = require('mysql');
 const { JSONParser } = require('formidable');
+const { Hash } = require('crypto');
 
 var con = mysql.createConnection({
     host: "127.0.0.1",
@@ -28,15 +28,6 @@ con.connect(function (err) {
 
 function randomIntFromInterval(min, max) { // min and max included 
     return Math.floor(Math.random() * (max - min + 1) + min)
-}
-
-function sleep(milliseconds) {
-    var start = new Date().getTime();
-    for (var i = 0; i < 1e7; i++) {
-        if ((new Date().getTime() - start) > milliseconds) {
-            break;
-        }
-    }
 }
 
 var file = new (static.Server)(__dirname);
@@ -55,12 +46,89 @@ http.createServer(function (req, res) {
             console.log('navigate to music folder!');
         });
     }
-    else if (req.url.includes('/upload-music')) {
-        fs.readFile('./upload-music.html', function (err, html) {
-            res.writeHead(200, { 'content-type': 'text/html' });
-            res.end(html);
-        });
 
+    else if (req.url.includes('/upload-json-html')) {
+        fs.readFile('./json-music.html', function (err, html) {
+            res.writeHead(200, { 'content-type': 'text/html' });
+            res.end(html)
+        });
+    }
+    else if (req.url.includes('/upload-json-music')) {
+        var form = new formidable.IncomingForm();
+        form.parse(req, function (err, fields, files) {
+            if (err) {
+                console.log(err.message);
+                return;
+            }
+            res.writeHead(200, { 'content-type': 'text/plain' });
+            res.write('received upload:\n\n');
+            // This last line responds to the form submission with a list of the parsed data and files.
+            res.end(util.inspect({ fields: fields, files: files }));
+            fs.readFile(files.musicjson.path, 'utf8', function (err, text) {
+                if (err) {
+                    console.log(err.message);
+                    return;
+                }
+                var allDataJson = JSON.parse(text);
+                // console.log(allDataJson);
+                for (var i = 0; i < allDataJson.length; i++) {
+                    var song = allDataJson[i];
+                    // var songId = song.songId;
+                    var songId = sha1(song.songTitle + song.artistName + song.genreName + song.albumTitle + song.year);
+                    var artistName = song.artistName;
+                    var genreName = song.genreName;
+                    var albumTitle = song.albumTitle;
+                    var year = song.year;
+                    console.log(songId);
+
+                    con.query('insert into Song(songTitle,artistName,albumTitle,genreName,songId,songUrl,songImageUrl) values (?,?,?,?,?,?,?)', [song.songTitle, song.artistName, song.albumTitle, song.genreName, songId, song.songUrl, song.songImageUrl], function (err, result) {
+                        if (err) throw err;
+                        console.log("1 record inserted");
+                    });
+                    // try
+                    // {
+                    //     con.query('insert into Artist values(?,?)', [artistName, genreName]);
+                    // }
+                    // catch{};
+
+                    // try{
+                    //     con.query('insert into Album(albumTitle,artistName,genreName,year) values(?,?,?,?)', [albumTitle, artistName, genreName, year]);
+                    // }
+                    // catch{};
+
+                    // con.query('select artistName from Artist where artistName = ?', [artistName], function (err, result) {
+                    //     if (err) console.log(err);
+                    //     if (result.length == 0) {
+                           
+                    //     }
+                    // });
+                    // con.query('select albumTitle from Album where albumTitle = ?', [song.albumTitle], function (err, result) {
+                    //     if (err) console.log(err);
+                    //     if (result.length == 0) {
+                    //     }
+                    // });
+                    // con.query('select songId from Song where songId = ?', [songId], function (err, result) {
+                    //     if (err) console.log(err);
+                    //     if (result.length == 1) {
+                    //         con.query('update Song set songUrl = ?,songImageUrl = ? where songId = ?', [songUrl,songImageUrl,songId], function (err, result) {
+                    //             if (err) throw err;
+                    //             console.log('update query --> return ---> ');
+                    //             console.log(result);
+                    //             // console.log("1 record updated, ---> " + songId);
+                    //         });
+                    //     }
+                    //     else 
+                    //     {
+                    //         songId = sha1(song.songTitle + song.artistName + song.genreName + song.albumTitle + song.year);
+                    //         con.query('insert into Song(songTitle,artistName,albumTitle,genreName,songId,songUrl,songImageUrl) values (?,?,?,?,?,?,?)', [song.songTitle, song.artistName, song.albumTitle, song.genreName, songId, song.songUrl,song.songImageUrl], function (err, result) {
+                    //             if (err) throw err;
+                    //             // console.log("1 record inserted, ---->" + songId);
+                    //         });
+                    //     }
+                    // });
+                }
+            });
+        });
     }
     else if (req.url.includes('/get-all-music') && req.method.toLowerCase() == 'get') {
         console.log('/get-all-music---------------------------');
@@ -123,6 +191,13 @@ http.createServer(function (req, res) {
             }
             console.log('end-----------------------------------------');
         });
+    }
+    else if (req.url.includes('/upload-music')) {
+        fs.readFile('./upload-music.html', function (err, html) {
+            res.writeHead(200, { 'content-type': 'text/html' });
+            res.end(html);
+        });
+
     }
     else if (req.url.includes('/upload') && req.method.toLowerCase() == 'post') {
         var form = new formidable.IncomingForm();
@@ -262,13 +337,13 @@ http.createServer(function (req, res) {
                                 console.log(' value i ----> ' + i);
                                 // lock = 0;
                                 console.log('lock value --> ' + lock)
-                                if(i == resultLength - 1 ) 
+                                if (i == resultLength - 1)
                                     lock = 0;
                                 //     res.end(JSON.stringify(arrayFinalResult));
 
                                 // res.end(JSON.stringify(songs));
                             });
-                         
+
                         }
                         // console.log('lock value --> ' + lock)
                         // res.end(JSON.stringify(arrayFinalResult));
