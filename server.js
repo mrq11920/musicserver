@@ -5,6 +5,7 @@ var formidable = require('formidable'),
 var sha1 = require('sha1');
 var static = require('node-static');
 var http = require('http');
+var path = require('path')
 const musicFolder = __dirname + "/music/";
 const baseUrl = 'http://localhost:8080/'
 
@@ -29,7 +30,41 @@ con.connect(function (err) {
 function randomIntFromInterval(min, max) { // min and max included 
     return Math.floor(Math.random() * (max - min + 1) + min)
 }
+function renameFiles() {
+    var dir = "./music/";
+    fs.readFile("./alldataserver.json", 'utf8', (err, text) => {
+        var allDataJson = JSON.parse(text);
+        fs.readdir(dir, (err, files) => {
+            for (var i = 0; i < allDataJson.length; i++) {
+                var song = allDataJson[i];
+                for (var j = 0; j < files.length; j++) {
+                    if (files[j].toLowerCase().includes(song.songTitle.toLowerCase())) {
+                        var extName = path.extname(files[j]);
+                        fs.rename(dir + files[j], dir + song.songId + extName, function () { });
+                    }
+                }
+            }
+        });
+    });
 
+}
+// renameFiles();
+function renameUrl() {
+    // assets/audios/
+    fs.readFile("./alldataserver.json", 'utf8', (err, text) => { 
+        var allDataJson = JSON.parse(text);
+        for(var i =0 ;i < allDataJson.length; i++)
+        {
+            var song = allDataJson[i];
+            allDataJson[i].songUrl = 'assets/audios/' +song.songId +'.mp3';
+            allDataJson[i].songImageUrl = 'assets/audios/' +song.songId +'.jpg';
+        }
+        console.log(allDataJson);
+        fs.writeFile('./fixedalldata.json',JSON.stringify(allDataJson),'utf-8',function(){});
+        console.log('done!');
+    });
+}
+renameUrl();
 var file = new (static.Server)(__dirname);
 http.createServer(function (req, res) {
     if (req.url.includes('/music/') && req.method.toLowerCase() == 'get') {
@@ -74,14 +109,14 @@ http.createServer(function (req, res) {
                 for (var i = 0; i < allDataJson.length; i++) {
                     var song = allDataJson[i];
                     // var songId = song.songId;
-                    var songId = sha1(song.songTitle + song.artistName + song.genreName + song.albumTitle + song.year);
-                    var artistName = song.artistName;
-                    var genreName = song.genreName;
-                    var albumTitle = song.albumTitle;
-                    var year = song.year;
-                    console.log(songId);
+                    // var songId = sha1(song.songTitle + song.artistName + song.genreName + song.albumTitle + song.year);
+                    // var artistName = song.artistName;
+                    // var genreName = song.genreName;
+                    // var albumTitle = song.albumTitle;
+                    // var year = song.year;
+                    console.log(song.songId);
 
-                    con.query('insert into Song(songTitle,artistName,albumTitle,genreName,songId,songUrl,songImageUrl) values (?,?,?,?,?,?,?)', [song.songTitle, song.artistName, song.albumTitle, song.genreName, songId, song.songUrl, song.songImageUrl], function (err, result) {
+                    con.query('insert into Song(songTitle,artistName,albumTitle,genreName,songId,songUrl,songImageUrl) values (?,?,?,?,?,?,?)', [song.songTitle, song.artistName, song.albumTitle, song.genreName, song.songId, song.songUrl, song.songImageUrl], function (err, result) {
                         if (err) throw err;
                         console.log("1 record inserted");
                     });
@@ -100,7 +135,7 @@ http.createServer(function (req, res) {
                     // con.query('select artistName from Artist where artistName = ?', [artistName], function (err, result) {
                     //     if (err) console.log(err);
                     //     if (result.length == 0) {
-                           
+
                     //     }
                     // });
                     // con.query('select albumTitle from Album where albumTitle = ?', [song.albumTitle], function (err, result) {
@@ -313,8 +348,7 @@ http.createServer(function (req, res) {
                         console.log(result);
                         console.log('length --> ' + result.length);
                         console.log('---------------------------------------------------')
-                        if(result.length != 0) 
-                        {
+                        if (result.length != 0) {
                             var listSongId = result[0].songIdList.split(',');
                             var resultPlaylistName = result[0].playlistName;
 
